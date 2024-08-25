@@ -38,6 +38,5 @@ jobs:
         uses: aws-actions/aws-cloudformation-github-deploy@v1.0.3
         with:
           name:  Lambda-ec2-stop-start
-          operation: delete-stack
           template: CF_Lambda_Ec2StartStop.yaml
 

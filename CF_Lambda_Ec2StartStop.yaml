@@ -68,13 +68,22 @@ Resources:
                     - "ec2:StopInstances"
                     - "ec2:DescribeInstances"
                   Resource: "*"
+  LogGroupLambda:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: LambdaEc2StartStop
+      RetentionInDays: 1 
+
  
+
   AutoStartEC2Lambda:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: AutoStartEC2Instance
       Runtime: python3.12
       MemorySize: 128
+      LoggingConfig:
+        LogGroupName: !Ref LogGroupLambda
       Role: !GetAtt
         - Ec2RoleStartStop
         - Arn
@@ -114,6 +123,8 @@ Resources:
       FunctionName: AutoStopEC2Instance
       Runtime: python3.12
       MemorySize: 128
+      LoggingConfig:
+        LogGroupName: !Ref LogGroupLambda
       Role: !GetAtt
         - Ec2RoleStartStop
         - Arn
