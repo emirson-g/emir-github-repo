@@ -1,0 +1,195 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "This cloudformation template will create a role and managed policy allowing start/stop ec2 instance"
+
+Metadata:
+  Version: "1.0"
+  Author: "Emirson Martinez"
+
+Parameters:
+  PolicyDescription:
+    Type: String
+    Default: "Policy allowing start/stop ec2 instance"
+    Description: Type a description for this policy. This can NOT be changed after initial assignment.
+  PolicyName:
+    Type: String
+    Default: "Ec2_Start_Stop_Policy"
+    Description: The name that will be applied to the custom policy.
+  
+  AutoStartEC2Schedule:
+    Default: cron(2 21 ? * MON-FRI *)
+    Description: Auto Start EC2 Instance (Mon-Fri 9:00 AM EST / 1:00 PM GMT), enter a Schedule expression e.g. cron(0 13 ? * MON-FRI *), see https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
+    Type: String
+    MinLength: 20
+    MaxLength: 30
+  
+  AutoStopEC2Schedule:
+    Default: cron(7 21 ? * MON-FRI *)
+    Description: Auto Stop EC2 Instance (Mon-Fri 9:00 PM EST / 1:00 AM GMT), enter a Schedule expression e.g. cron(0 1 ? * MON-FRI *), see https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
+    Type: String
+    MinLength: 20
+    MaxLength: 30
+
+
+Resources:
+  Ec2RoleStartStop:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+           - PolicyName: !Ref PolicyName
+             PolicyDocument: 
+              Version: "2012-10-17"
+              Statement:
+                -
+                  Effect: "Allow"
+                  Action:
+                    - "logs:CreateLogGroup"
+                  Resource: !Sub "arn:aws:logs:*:${AWS::AccountId}:*"
+                -
+                  Effect: "Allow"
+                  Action:
+                    - "logs:CreateLogStream"
+                    - "logs:PutLogEvents"
+                  Resource: 
+                    - !Sub "arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/AutoStartEC2Instance:*"
+                    - !Sub "arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/AutoStopEC2Instance:*"
+                -
+                  Effect: "Allow"
+                  Action:
+                    - "ec2:StartInstances"
+                    - "ec2:StopInstances"
+                    - "ec2:DescribeInstances"
+                  Resource: "*"
+ 
+  AutoStartEC2Lambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: AutoStartEC2Instance
+      Runtime: python3.12
+      MemorySize: 128
+      Role: !GetAtt
+        - Ec2RoleStartStop
+        - Arn
+      Handler: index.lambda_handler
+      Timeout: 60
+      ### ReservedConcurrentExecutions: 10
+      Code:
+        ZipFile: |
+          import boto3
+
+          ec2 = boto3.client('ec2')
+
+          def lambda_handler(event, context):
+            # Retrieve all instances with the 'EC2_START' tag
+            instances = ec2.describe_instances(
+                Filters=[
+                    {
+                        'Name': 'tag:EC2_START',
+                        'Values': ['true']  # Or any other value you're using to mark instances for starting
+                    }
+                ]
+            )
+
+            instance_ids = [instance['InstanceId'] for reservation in instances['Reservations']
+                            for instance in reservation['Instances']]
+
+            if instance_ids:
+                # Start the identified instances
+                ec2.start_instances(InstanceIds=instance_ids)
+                print(f"Start instances: {instance_ids}")
+            else:
+                print("No instances with 'EC2_START' tag found.")
+
+  AutoStopEC2Lambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: AutoStopEC2Instance
+      Runtime: python3.12
+      MemorySize: 128
+      Role: !GetAtt
+        - Ec2RoleStartStop
+        - Arn
+      Handler: index.lambda_handler
+      Timeout: 60
+      ### ReservedConcurrentExecutions: 10
+      Code:
+        ZipFile: |
+          import boto3
+
+          ec2 = boto3.client('ec2')
+
+          def lambda_handler(event, context):
+            # Retrieve all instances with the 'EC2_STOP' tag
+            instances = ec2.describe_instances(
+                Filters=[
+                    {
+                        'Name': 'tag:EC2_STOP',
+                        'Values': ['true']  # Or any other value you're using to mark instances for stoping
+                    }
+                ]
+            )
+
+            instance_ids = [instance['InstanceId'] for reservation in instances['Reservations']
+                            for instance in reservation['Instances']]
+
+            if instance_ids:
+                # Stop the identified instances
+                ec2.stop_instances(InstanceIds=instance_ids)
+                print(f"Stop instances: {instance_ids}")
+            else:
+                print("No instances with 'EC2_STOP' tag found.")
+  AutoStartEC2Rule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name : AutoStartEC2Rule
+      Description: Auto Start EC2 Instance (Mon-Fri 20:00 PM GMT)
+      ScheduleExpression: !Ref AutoStartEC2Schedule
+      State: ENABLED
+      Targets:
+        -
+          Arn: !GetAtt AutoStartEC2Lambda.Arn
+          Id: AutoStartEC2Lambda
+  AutoStartEC2LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt AutoStartEC2Lambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn : !GetAtt AutoStartEC2Rule.Arn
+
+  AutoStopEC2Rule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name : AutoStopEC2Rule
+      Description: Auto Stop EC2 Instance (Mon-Fri 20:30 PM GMT)
+      ScheduleExpression: !Ref AutoStopEC2Schedule
+      State: ENABLED
+      Targets:
+        -
+          Arn: !GetAtt AutoStopEC2Lambda.Arn
+          Id: AutoStopEC2Lambda
+
+  AutoStopEC2LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt AutoStopEC2Lambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn : !GetAtt AutoStopEC2Rule.Arn
+
+Outputs:
+  PolicyName:
+    Description: The name of the newly created managed policy
+    Value: !Ref PolicyName
+  RoleName:
+    Description: The name of the newly created role
+    Value: !Ref Ec2RoleStartStop
+
