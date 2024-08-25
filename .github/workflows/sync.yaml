@@ -39,5 +39,5 @@ jobs:
         with:
           name:  Lambda-ec2-stop-start
           operation: delete-stack
-          #template: CF_Lambda_Ec2StartStop.yaml
+          template: CF_Lambda_Ec2StartStop.yaml
 
