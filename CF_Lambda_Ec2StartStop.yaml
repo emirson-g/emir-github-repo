@@ -84,6 +84,7 @@ Resources:
       MemorySize: 128
       LoggingConfig:
         LogGroup: !Ref LogGroupLambda
+        ApplicationLogLevel: INFO
       Role: !GetAtt
         - Ec2RoleStartStop
         - Arn
@@ -125,6 +126,7 @@ Resources:
       MemorySize: 128
       LoggingConfig:
         LogGroup: !Ref LogGroupLambda
+        ApplicationLogLevel: INFO
       Role: !GetAtt
         - Ec2RoleStartStop
         - Arn
