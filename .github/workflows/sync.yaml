@@ -1,0 +1,38 @@
+name: Deploy CloudFormation Stacks
+
+# Controls when the action will run.
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      region:
+        description: "AWS Region"
+        required: true
+        default: "us-east-1"
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  cfn-deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        id: creds
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+#          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          role-session-name: cflambda
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+          aws-region: ${{ secrets.AWS_REGION }} 
+
+      - name: Deploy Lambda CloudFormation Stacks
+        id: Lambda_ec2_stop_start
+        uses: aws-actions/aws-cloudformation-github-deploy@v1.0.3
+        with:
+          name:  Lambda_ec2_stop_start
+          template: CF_Lambda_Ec2StartStop.yaml
+
