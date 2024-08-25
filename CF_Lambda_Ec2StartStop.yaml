@@ -31,6 +31,12 @@ Parameters:
 
 
 Resources:
+  LogGroupLambda:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: LambdaEc2StartStop
+      RetentionInDays: 1 
+  
   Ec2RoleStartStop:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -59,8 +65,9 @@ Resources:
                     - "logs:CreateLogStream"
                     - "logs:PutLogEvents"
                   Resource: 
-                    - !Sub "arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/AutoStartEC2Instance:*"
-                    - !Sub "arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/AutoStopEC2Instance:*"
+                    - !GetAtt LogGroupLambda.Arn
+                    #- !Sub "arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/AutoStartEC2Instance:*"
+                    #- !Sub "arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/AutoStopEC2Instance:*"
                 -
                   Effect: "Allow"
                   Action:
@@ -68,11 +75,6 @@ Resources:
                     - "ec2:StopInstances"
                     - "ec2:DescribeInstances"
                   Resource: "*"
-  LogGroupLambda:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: LambdaEc2StartStop
-      RetentionInDays: 1 
 
  
 
