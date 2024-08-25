@@ -35,9 +35,9 @@ jobs:
 
       - name: Deploy Lambda CloudFormation Stacks
         id: Lambda_ec2_stop_start
-        uses: aws-actions/aws-cloudformation-github-deploy@v2
+        uses: aws-actions/aws-cloudformation-github-deploy@v1.0.3
         with:
           name:  Lambda-ec2-stop-start
-          action: delete
+          operation: delete-stack
           #template: CF_Lambda_Ec2StartStop.yaml
 
