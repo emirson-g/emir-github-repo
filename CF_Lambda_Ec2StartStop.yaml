@@ -83,7 +83,7 @@ Resources:
       Runtime: python3.12
       MemorySize: 128
       LoggingConfig:
-        LogGroupName: !Ref LogGroupLambda
+        LogGroup: !Ref LogGroupLambda
       Role: !GetAtt
         - Ec2RoleStartStop
         - Arn
@@ -124,7 +124,7 @@ Resources:
       Runtime: python3.12
       MemorySize: 128
       LoggingConfig:
-        LogGroupName: !Ref LogGroupLambda
+        LogGroup: !Ref LogGroupLambda
       Role: !GetAtt
         - Ec2RoleStartStop
         - Arn
